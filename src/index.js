@@ -110,10 +110,10 @@ const handleDnsQuery = (msg, rinfo) => {
   }
 };
 
-const PORT = 5333;
-const HOST = '::';
+const PORT = process.argv[3] || 5333;
+const HOST = process.argv[2] || '::';
 
-const udpServer = dgram.createSocket('udp6');
+const udpServer = dgram.createSocket(net.isIPv6(HOST) ? 'udp6' : 'udp4');
 udpServer.on('message', (msg, rinfo) => {
   try {
     const responseBuf = handleDnsQuery(msg, {address:rinfo.address,port:rinfo.port}) || Buffer.alloc(0);
