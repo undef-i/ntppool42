@@ -64,5 +64,5 @@ const template = `<!DOCTYPE html>
 </body>
 </html>`;
 
-fs.mkdirSync(path.dirname(htmlPath));
+fs.mkdirSync(path.dirname(htmlPath), {recursive:true});
 fs.writeFileSync(htmlPath, template);
