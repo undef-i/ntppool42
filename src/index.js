@@ -20,7 +20,7 @@ const ZONE_SOA = {
   }
 };
 
-const [ns, anycast4, anycast6, asia4, asia6, amer4, amer6] = await Promise.all([
+const [ns, anycast4, anycast6, asia4, asia6, amer4, amer6, euro4, euro6, ocea4, ocea6, anta4, anta6] = await Promise.all([
   fs.readFile('data/ns.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
   fs.readFile('data/anycast4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
   fs.readFile('data/anycast6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
@@ -28,6 +28,12 @@ const [ns, anycast4, anycast6, asia4, asia6, amer4, amer6] = await Promise.all([
   fs.readFile('data/asia6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
   fs.readFile('data/amer4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
   fs.readFile('data/amer6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/euro4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/euro6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/ocea4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/ocea6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/anta4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/anta6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
 ]);
 
 function shufArray(arr) {
@@ -42,20 +48,15 @@ const handleDnsQuery = (msg, rinfo) => {
   try {
     const request = dnsPacket.decode(msg);
     if (request.type !== 'query' || !request.questions.length) return;
-
     const question = request.questions[0];
     const qName = question.name.toLowerCase();
     const qType = question.type;
     const qClass = question.class;
-
     console.log(rinfo, question);
-
     const ans = [], ats = [];
-
     let flags = (ZONE_SOA.name === qName || qName.endsWith('.' + ZONE_SOA.name)) && dnsPacket.AUTHORITATIVE_ANSWER;
     let rcode = (flags & dnsPacket.AUTHORITATIVE_ANSWER) ? rcodes.toRcode('NOERROR') : rcodes.toRcode('REFUSED');
     if (qClass !== 'IN') rcode = rcodes.toRcode('REFUSED');
-
     q: if (rcode === rcodes.toRcode('REFUSED')) {
       break q;
     } else if (qName === ZONE_SOA.name) {
@@ -79,11 +80,22 @@ const handleDnsQuery = (msg, rinfo) => {
       if (qType === 'A') ans.push(...shufArray(amer4.concat(anycast4)).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
       else if (qType === 'AAAA') ans.push(...shufArray(amer6.concat(anycast6)).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
       else ats.push(ZONE_SOA);
+    } else if (qName === 'ocea.' + ZONE_SOA.name) {
+      if (qType === 'A') ans.push(...shufArray(ocea4.concat(anycast4)).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
+      else if (qType === 'AAAA') ans.push(...shufArray(ocea6.concat(anycast6)).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
+      else ats.push(ZONE_SOA);
+    } else if (qName === 'euro.' + ZONE_SOA.name) {
+      if (qType === 'A') ans.push(...shufArray(euro4.concat(anycast4)).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
+      else if (qType === 'AAAA') ans.push(...shufArray(euro6.concat(anycast6)).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
+      else ats.push(ZONE_SOA);
+    } else if (qName === 'anta.' + ZONE_SOA.name) {
+      if (qType === 'A') ans.push(...shufArray(anta4.concat(anycast4)).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
+      else if (qType === 'AAAA') ans.push(...shufArray(anta6.concat(anycast6)).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
+      else ats.push(ZONE_SOA);
     } else {
       rcode = rcodes.toRcode('NXDOMAIN');
       ats.push(ZONE_SOA);
     }
-
     return dnsPacket.encode({
       type: 'response',
       id: request.id,
@@ -99,9 +111,9 @@ const handleDnsQuery = (msg, rinfo) => {
 };
 
 const PORT = 5333;
-const HOST = '127.0.0.1';
+const HOST = '::';
 
-const udpServer = dgram.createSocket('udp4');
+const udpServer = dgram.createSocket('udp6');
 udpServer.on('message', (msg, rinfo) => {
   try {
     const responseBuf = handleDnsQuery(msg, {address:rinfo.address,port:rinfo.port}) || Buffer.alloc(0);
