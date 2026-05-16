@@ -64,6 +64,10 @@ const handleDnsQuery = (msg, rinfo) => {
         ans.push(ZONE_SOA)
       else if (qType === 'NS')
         ans.push(...ns.map(data => { return {name:qName,type:'NS',ttl:3600,data}}))
+      else if (qType === 'A')
+        ans.push(...shufArray(anycast4.concat(asia4).concat(ocea4).concat(amer4).concat(anta4).concat(euro4)).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }))
+      else if (qType === 'AAAA')
+        ans.push(...shufArray(anycast6.concat(asia6).concat(ocea6).concat(amer6).concat(anta6).concat(euro6)).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }))
       else 
         ats.push(ZONE_SOA);
     } else if (qType === 'ANY') {
