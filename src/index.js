@@ -20,12 +20,14 @@ const ZONE_SOA = {
   }
 };
 
-const [ns, anycast4, anycast6, asia4, asia6] = await Promise.all([
+const [ns, anycast4, anycast6, asia4, asia6, amer4, amer6] = await Promise.all([
   fs.readFile('data/ns.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
   fs.readFile('data/anycast4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
   fs.readFile('data/anycast6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
   fs.readFile('data/asia4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/asia6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean))
+  fs.readFile('data/asia6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/amer4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/amer6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
 ]);
 
 function shufArray(arr) {
@@ -72,6 +74,10 @@ const handleDnsQuery = (msg, rinfo) => {
     } else if (qName === 'asia.' + ZONE_SOA.name) {
       if (qType === 'A') ans.push(...shufArray(asia4.concat(anycast4)).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
       else if (qType === 'AAAA') ans.push(...shufArray(asia6.concat(anycast6)).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
+      else ats.push(ZONE_SOA);
+    } else if (qName === 'amer.' + ZONE_SOA.name) {
+      if (qType === 'A') ans.push(...shufArray(amer4.concat(anycast4)).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
+      else if (qType === 'AAAA') ans.push(...shufArray(amer6.concat(anycast6)).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
       else ats.push(ZONE_SOA);
     } else {
       rcode = rcodes.toRcode('NXDOMAIN');
