@@ -20,14 +20,17 @@ const ZONE_SOA = {
   }
 };
 
-const anycast4 = (await fs.readFile('data/anycast4.txt', 'utf8')).split('\n').filter(Boolean);
-const anycast6 = (await fs.readFile('data/anycast6.txt', 'utf8')).split('\n').filter(Boolean);
-const asia4 = (await fs.readFile('data/asia4.txt', 'utf8')).split('\n').filter(Boolean);
-const asia6 = (await fs.readFile('data/asia6.txt', 'utf8')).split('\n').filter(Boolean);
+const [ns, anycast4, anycast6, asia4, asia6] = await Promise.all([
+  fs.readFile('data/ns.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/anycast4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/anycast6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/asia4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  fs.readFile('data/asia6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean))
+]);
 
 function shufArray(arr) {
-  for (let i = arr.length - 1; i >= 0; i--) {
-    const j = Math.floor(Math.random() * i);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (1 + i));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
@@ -43,42 +46,42 @@ const handleDnsQuery = (msg, rinfo) => {
     const qType = question.type;
     const qClass = question.class;
 
-    console.log(question);
+    console.log(rinfo, question);
 
     const ans = [], ats = [];
 
-    let flags = ZONE_SOA.name === qName || qName.endsWith('.' + ZONE_SOA.name) ? dnsPacket.AUTHORITATIVE_ANSWER : rcodes.toRcode('REFUSED');
-    if (qClass !== 'IN') flags |= rcodes.toRcode('REFUSED')
+    let flags = (ZONE_SOA.name === qName || qName.endsWith('.' + ZONE_SOA.name)) && dnsPacket.AUTHORITATIVE_ANSWER;
+    let rcode = (flags & dnsPacket.AUTHORITATIVE_ANSWER) ? rcodes.toRcode('NOERROR') : rcodes.toRcode('REFUSED');
+    if (qClass !== 'IN') rcode = rcodes.toRcode('REFUSED');
 
-    q: if (flags & rcodes.toRcode('REFUSED')) {
+    q: if (rcode === rcodes.toRcode('REFUSED')) {
       break q;
     } else if (qName === ZONE_SOA.name) {
       if (qType === 'SOA')
         ans.push(ZONE_SOA)
       else if (qType === 'NS')
-        ans.push({
-        })
+        ans.push(...ns.map(data => { return {name:qName,type:'NS',ttl:3600,data}}))
       else 
         ats.push(ZONE_SOA);
     } else if (qType === 'ANY') {
       ans.push({name:qName,type:'HINFO',class:'IN',ttl:3600,data:{cpu:'RFC8482',os:''}});
     } else if (qName === 'anycast.' + ZONE_SOA.name) {
-      if (qType === 'A') ans.push(...shufArray(anycast4).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
-      else if (qType === 'AAAA') ans.push(...shufArray(anycast6).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
+      if (qType === 'A') ans.push(...shufArray([...anycast4]).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
+      else if (qType === 'AAAA') ans.push(...shufArray([...anycast6]).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
       else ats.push(ZONE_SOA);
     } else if (qName === 'asia.' + ZONE_SOA.name) {
-      if (qType === 'A') ans.push(...shufArray([...asia4, ...anycast4]).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
-      else if (qType === 'AAAA') ans.push(...shufArray([...asia6, ...anycast6]).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
+      if (qType === 'A') ans.push(...shufArray(asia4.concat(anycast4)).slice(0, 4).map(data=>{ return {name:qName,type:'A',class:'IN',ttl:120,data}; }));
+      else if (qType === 'AAAA') ans.push(...shufArray(asia6.concat(anycast6)).slice(0, 4).map(data=>{ return {name:qName,type:'AAAA',class:'IN',ttl:120,data}; }));
       else ats.push(ZONE_SOA);
     } else {
-      flags = flags | rcodes.toRcode('NXDOMAIN');
+      rcode = rcodes.toRcode('NXDOMAIN');
       ats.push(ZONE_SOA);
     }
 
     return dnsPacket.encode({
       type: 'response',
       id: request.id,
-      flags,
+      flags: flags | rcode,
       questions: request.questions,
       answers: ans,
       authorities: ats
@@ -95,7 +98,7 @@ const HOST = '127.0.0.1';
 const udpServer = dgram.createSocket('udp4');
 udpServer.on('message', (msg, rinfo) => {
   try {
-    const responseBuf = handleDnsQuery(msg);
+    const responseBuf = handleDnsQuery(msg, {address:rinfo.address,port:rinfo.port}) || Buffer.alloc(0);
     udpServer.send(responseBuf, 0, responseBuf.length, rinfo.port, rinfo.address);
   } catch (err) {
     console.error('udp server error:', err.message);
@@ -109,13 +112,17 @@ const tcpServer = net.createServer((socket) => {
     buffer = Buffer.concat([buffer, chunk]);
     while (buffer.length >= 2) {
       const expectedLength = buffer.readUInt16BE(0);
+      if (expectedLength < 12) {
+        socket.destroy();
+        return;
+      }
       if (buffer.length < 2 + expectedLength) {
         break;
       }
       const dnsQueryBuf = buffer.subarray(2, 2 + expectedLength);
       buffer = buffer.subarray(2 + expectedLength);
       try {
-        const dnsResponseBuf = handleDnsQuery(dnsQueryBuf);
+        const dnsResponseBuf = handleDnsQuery(dnsQueryBuf, { address: socket.remoteAddress, port: socket.remotePort }) || Buffer.alloc(0);
         const lengthPrefix = Buffer.alloc(2);
         lengthPrefix.writeUInt16BE(dnsResponseBuf.length, 0);
         socket.write(Buffer.concat([lengthPrefix, dnsResponseBuf]));
