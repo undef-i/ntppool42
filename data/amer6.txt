@@ -1,5 +1,5 @@
-fd36:62be:ef51:2::1
-fd36:62be:ef51:5::1
-fd36:62be:ef51:6::1
-fd42:23eb:6cf::161
-fd42:23eb:6cf::164
+fd36:62be:ef51:2::1,COWGL-MNT
+fd36:62be:ef51:5::1,COWGL-MNT
+fd36:62be:ef51:6::1,COWGL-MNT
+fd42:23eb:6cf::161,SESS-MNT
+fd42:23eb:6cf::164,SESS-MNT

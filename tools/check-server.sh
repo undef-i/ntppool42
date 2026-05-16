@@ -6,7 +6,7 @@ if ! command -v ntpdate; then
 fi
 code=0
 for i in data/*[4,6].txt; do
-  for j in `shuf $i | head -n 20`; do
+  for j in `shuf $i | head -n20 | cut -d, -f1`; do
     ntpdate -q $j
     [ "$?" = 0 ] && continue
     printf 'warn: %s failed (1/3)\n' "$j" >&2

@@ -1,2 +1,2 @@
-fd36:62be:ef51:ffff::1
-fd42:23eb:6cf:aaaa::123
+fd36:62be:ef51:ffff::1,COWGL-MNT
+fd42:23eb:6cf:aaaa::123,SESS-MNT

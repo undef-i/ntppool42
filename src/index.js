@@ -20,20 +20,24 @@ const ZONE_SOA = {
   }
 };
 
+const readDataFile = async (fname) => {
+  const s = await fs.readFile(fname, 'utf8');
+  return s.split(/\s+/).filter(Boolean).map(e => e.split(',')[0]);
+};
 const [ns, anycast4, anycast6, asia4, asia6, amer4, amer6, euro4, euro6, ocea4, ocea6, anta4, anta6] = await Promise.all([
-  fs.readFile('data/ns.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/anycast4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/anycast6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/asia4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/asia6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/amer4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/amer6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/euro4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/euro6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/ocea4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/ocea6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/anta4.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
-  fs.readFile('data/anta6.txt', 'utf8').then(r => r.split(/\s+/).filter(Boolean)),
+  readDataFile('data/ns.txt'),
+  readDataFile('data/anycast4.txt'),
+  readDataFile('data/anycast6.txt'),
+  readDataFile('data/asia4.txt'),
+  readDataFile('data/asia6.txt'),
+  readDataFile('data/amer4.txt'),
+  readDataFile('data/amer6.txt'),
+  readDataFile('data/euro4.txt'),
+  readDataFile('data/euro6.txt'),
+  readDataFile('data/ocea4.txt'),
+  readDataFile('data/ocea6.txt'),
+  readDataFile('data/anta4.txt'),
+  readDataFile('data/anta6.txt'),
 ]);
 
 function shufArray(arr) {

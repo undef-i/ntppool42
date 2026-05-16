@@ -5,7 +5,7 @@ if ! command -v dig; then
   exit 127
 fi
 code=0
-for j in `shuf $(dirname $_)/../data/ns.txt | head -n 20`; do
+for j in `shuf $(dirname $_)/../data/ns.txt | head -n20 | cut -d, -f1`; do
   dig @$j pool.ntp.dn42. SOA
   [ "$?" = 0 ] && continue
   printf 'warn: %s failed (1/3)\n' "$j" >&2
