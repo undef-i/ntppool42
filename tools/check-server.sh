@@ -1,5 +1,5 @@
 #!/bin/sh
-PATH="/sbin/:$PATH"
+PATH="/sbin:$PATH"
 if ! command -v ntpdate; then
   echo "fatal: ntpdate not found" >&2
   exit 127
@@ -9,13 +9,13 @@ for i in data/*[4,6].txt; do
   for j in `shuf $i | head -n 20`; do
     ntpdate -q $j
     [ "$?" = 0 ] && continue
-    printf 'warn: %s failed (1/3)' "$j"
+    printf 'warn: %s failed (1/3)\n' "$j" >&2
     ntpdate -q $j
     [ "$?" = 0 ] && continue
-    printf 'warn: %s failed (2/3)' "$j"
+    printf 'warn: %s failed (2/3)\n' "$j" >&2
     ntpdate -q $j
     [ "$?" = 0 ] && continue
-    printf 'error: %s failed (3/3)' "$j" >&2
+    printf 'error: %s failed (3/3)\n' "$j" >&2
     code=1
   done
 done
