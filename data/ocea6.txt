@@ -1,2 +1,1 @@
 fd36:62be:ef51:7::1,COWGL-MNT
-fdef:fa9b:62b:f113::1,NEDIFINITA-MNT
